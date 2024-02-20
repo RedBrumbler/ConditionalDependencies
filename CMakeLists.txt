@@ -23,6 +23,8 @@ include_directories(
     ${EXTERN_DIR}/includes
 )
 
+add_compile_options(-O3 -fvisibility=hidden)
+
 add_compile_definitions(
     MOD_ID="${PACKAGE_ID}"
     VERSION="${PACKAGE_VERSION}"
