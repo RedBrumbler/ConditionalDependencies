@@ -7,15 +7,22 @@
     "version": "0.1.0",
     "url": "https://github.com/sc2ad/ConditionalDependencies",
     "additionalData": {
-      "headersOnly": true
+      "headersOnly": true,
+      "cmake": false
     }
   },
   "dependencies": [
     {
-      "id": "modloader",
+      "id": "scotland2",
       "versionRange": "*",
       "additionalData": {}
     }
   ],
-  "additionalData": {}
+  "workspace": {
+    "scripts": {
+      "build": [
+        "pwsh ./build.ps1"
+      ]
+    }
+  }
 }

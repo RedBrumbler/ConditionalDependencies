@@ -7,15 +7,29 @@
 #include <type_traits>
 #include <typeinfo>
 #include <string>
+#include <span>
 #include "utils.hpp"
 
 namespace CondDeps {
+    // use default visibility for exposed methods
+    #ifndef CONDDEPS_VISIBILITY
+    #define CONDDEPS_VISIBILITY __attribute__((visibility("default")))
+    #endif
+
+    // also mark exposed methods as extern C if required
+    #ifndef CONDDEPS_FUNC
+        #ifdef __cplusplus
+        #define CONDDEPS_FUNC extern "C" CONDDEPS_VISIBILITY
+        #else
+        #define CONDDEPS_FUNC CONDDEPS_VISIBILITY
+        #endif
+    #endif
 
     #ifndef EXPOSE_API
     // Exposes an API method of this signature for other mods to use in a conditional and type safe fashion.
     #define EXPOSE_API(name, retVal, ...) \
     retVal name(__VA_ARGS__); \
-    extern "C" ::CondDeps::CondDepsRet  __ ##name() { \
+    CONDDEPS_FUNC ::CondDeps::CondDepsRet  __ ##name() { \
         return ::CondDeps::CondDepConverter<decltype(&name)>::get(&name); \
     } \
     retVal name(__VA_ARGS__)
@@ -24,7 +38,7 @@ namespace CondDeps {
     #ifndef EXPOSE_STATIC_API
     // Exposes an API method of this signature that wraps the provided method pointer to use in a conditional and type safe fashion.
     #define EXPOSE_STATIC_API(name, ptr) \
-    extern "C" ::CondDeps::CondDepsRet __ ##name() { \
+    CONDDEPS_FUNC ::CondDeps::CondDepsRet __ ##name() { \
         return ::CondDeps::CondDepConverter<decltype(ptr)>::get(ptr); \
     }
     #endif
@@ -32,7 +46,7 @@ namespace CondDeps {
     #ifndef EXPOSE_INSTANCE_API
     // Exposes an API method of this signature that wraps the provided instance member pointer to use in a conditional and type safe fashion.
     #define EXPOSE_INSTANCE_API(name, ptr) \
-    extern "C" ::CondDeps::CondDepsRet __ ##name() { \
+    CONDDEPS_FUNC ::CondDeps::CondDepsRet __ ##name() { \
         return ::CondDeps::CondDepConverter<typename ::CondDeps::FunctionWrapper<decltype(ptr)>::WrapperType>::get(&::CondDeps::FunctionWrapper<decltype(ptr)>::wrap<ptr>); \
     }
     #endif
@@ -40,8 +54,8 @@ namespace CondDeps {
     template<class Ret = void*>
     std::optional<Ret> GetSymbol(std::string_view id, std::string_view name) {
         std::string partial("lib" + std::string(id) + ".so");
-        auto searchPath = CondDeps::Internal::cond_getPath() + partial;
-        if (!CondDeps::Internal::cond_fileexists(searchPath)) {
+        auto searchPath = CondDeps::Internal::find_cond(partial);
+        if (!CondDeps::Internal::cond_fileexists(searchPath.string())) {
             return std::nullopt;
         }
         // Clear dlerror first

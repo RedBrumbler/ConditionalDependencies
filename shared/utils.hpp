@@ -10,8 +10,9 @@
 #include <cxxabi.h>
 #include <vector>
 #include <array>
+#include <filesystem>
 #include "logging.hpp"
-#include "modloader/shared/modloader.hpp"
+#include "scotland2/shared/loader.hpp"
 
 namespace CondDeps {
     extern "C" {
@@ -94,7 +95,7 @@ namespace CondDeps {
                 return false;
             }
             std::array<TInfo, sizeof...(TArgs)> arr{TInfo{typeName<TArgs>(), sizeof(TArgs)}...};
-            
+
             for (size_t i = 0; i < sizeof...(TArgs); ++i) {
                 auto p = ret.params[i];
                 auto actual = arr[i];
@@ -121,7 +122,7 @@ namespace CondDeps {
                 return false;
             }
             std::array<TInfo, sizeof...(TArgs)> arr{TInfo{typeName<TArgs>(), sizeof(TArgs)}...};
-            
+
             for (size_t i = 0; i < sizeof...(TArgs); ++i) {
                 auto p = ret.params[i];
                 if (p.size != arr[i].size) {
@@ -163,14 +164,40 @@ namespace CondDeps {
             size_t size = snprintf(nullptr, 0, format.data(), args ...) + 1; // Extra space for '\0'
             if (size <= 0)
                 return "";
-            std::unique_ptr<char[]> buf(new char[size]); 
+            std::unique_ptr<char[]> buf(new char[size]);
             snprintf(buf.get(), size, format.data(), args...);
             return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
         #pragma GCC diagnostic pop
         }
 
-        static std::string cond_getPath() {
-            static auto path = Modloader::getDestinationPath();
+        static std::filesystem::path find_cond(std::string_view libname) {
+            static auto filesDir = modloader::get_files_dir();
+            static auto modsDir = filesDir / "mods";
+            static auto earlyModsDir = filesDir / "early_mods";
+            static auto libsDir = filesDir / "libs";
+
+            // check mods first
+            auto path = modsDir / libname;
+            if (cond_fileexists(path.string())) {
+                return path;
+            }
+
+            // then early mods
+            path = earlyModsDir / libname;
+            if (cond_fileexists(path.string())) {
+                return path;
+            }
+
+            // then libs
+            path = libsDir / libname;
+            if (cond_fileexists(path.string())) {
+                return path;
+            }
+            return libname;
+        }
+
+        static std::filesystem::path cond_getPath() {
+            static auto path = modloader::get_files_dir();
             return path;
         }
     };
